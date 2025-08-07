@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Live Mic Broadcast</title>
+</head>
+<body>
+  <h2>🎙️ Live Mic Broadcast</h2>
+  <button id="startBtn">Start Broadcasting</button>
+
+  <script>
+    const socket = new WebSocket("wss://voice-stream-server2.onrender.com");
+
+    document.getElementById("startBtn").onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.start(250);
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(e.data);
+        }
+      };
+    };
+  </script>
+</body>
+</html>
