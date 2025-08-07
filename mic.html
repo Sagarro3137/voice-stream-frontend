@@ -1,28 +1,50 @@
 <!DOCTYPE html>
 <html>
-<head><title>Mic Broadcast</title></head>
+<head>
+  <meta charset="UTF-8" />
+  <title>Mic Broadcaster</title>
+</head>
 <body>
-  <h1>Broadcast Your Voice</h1>
-  <button id="startBtn">Start Broadcasting</button>
-  <p id="status">Status: Idle</p>
+  <h2>🎙️ Broadcasting Voice...</h2>
+  <p id="status">Waiting...</p>
+
   <script>
-    const ws = new WebSocket('wss://voice-stream-server2.onrender.com/signal');
-    const pc = new RTCPeerConnection();
-    document.getElementById('startBtn').onclick = async () => {
-      document.getElementById('status').innerText = 'Status: Broadcasting';
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => pc.addTrack(t, stream));
-      pc.onicecandidate = e => e.candidate && ws.send(JSON.stringify({ type:'ice-candidate', candidate: e.candidate }));
-      ws.send(JSON.stringify({ type: 'broadcaster' }));
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      ws.send(JSON.stringify({ type: 'offer', sdp: offer }));
-    };
-    ws.onmessage = async e => {
-      const msg = JSON.parse(e.data);
-      if (msg.type === 'answer') await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-      if (msg.type === 'ice-candidate') await pc.addIceCandidate(msg.candidate);
-    };
+    const status = document.getElementById("status");
+
+    const socket = new WebSocket("wss://voice-stream-server2.onrender.com");
+
+    socket.addEventListener("open", () => {
+      status.innerText = "✅ Connected to server!";
+      socket.send("broadcaster");
+
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          const mediaRecorder = new MediaRecorder(stream, {
+            mimeType: "audio/webm"
+          });
+
+          mediaRecorder.addEventListener("dataavailable", (event) => {
+            if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
+              socket.send(event.data);
+            }
+          });
+
+          mediaRecorder.start(250); // Send chunks every 250ms
+        })
+        .catch(err => {
+          status.innerText = "❌ Microphone access denied.";
+          console.error(err);
+        });
+    });
+
+    socket.addEventListener("close", () => {
+      status.innerText = "❌ Disconnected from server.";
+    });
+
+    socket.addEventListener("error", (error) => {
+      status.innerText = "❗ WebSocket error.";
+      console.error("WebSocket error:", error);
+    });
   </script>
 </body>
 </html>
