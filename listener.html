@@ -1,33 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Listener</title>
+  <title>🎧 Listener</title>
 </head>
 <body>
-  <h1>👂 Listening Live Audio</h1>
+  <h2>🎧 Listening Live</h2>
   <p id="status">Connecting...</p>
 
   <script>
-    const socket = new WebSocket("wss://voice-stream-server2.onrender.com");
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    let firstChunk = null;
+    const ws = new WebSocket("wss://voice-stream-server2.onrender.com");
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-    socket.onopen = () => {
-      document.getElementById("status").innerText = "🔊 Connected. Waiting for audio...";
+    ws.onopen = () => {
+      document.getElementById("status").innerText = "Connected!";
     };
 
-    socket.onmessage = async (event) => {
-      const blob = event.data instanceof Blob ? event.data : new Blob([event.data]);
-      const arrayBuffer = await blob.arrayBuffer();
+    ws.onmessage = async (event) => {
+      const arrayBuffer = await event.data.arrayBuffer();
 
       try {
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        const source = audioContext.createBufferSource();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        const source = audioCtx.createBufferSource();
         source.buffer = audioBuffer;
-        source.connect(audioContext.destination);
+        source.connect(audioCtx.destination);
         source.start();
       } catch (err) {
-        console.error("⚠️ Audio decode error:", err);
+        console.error("Decode failed:", err);
       }
     };
   </script>
