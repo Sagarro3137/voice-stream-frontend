@@ -1,29 +1,54 @@
-<script>
-  const ws = new WebSocket("wss://voice-stream-server2.onrender.com");
-  let recorder, stream;
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Voice Broadcaster</title>
+</head>
+<body>
+  <h2>🎤 Voice Broadcast Mic</h2>
+  <button id="startBtn">Start Broadcasting</button>
+  <p id="status">Status: Not Connected</p>
 
-  ws.onopen = () => {
-    console.log("✅ WebSocket connected");
-  };
+  <script>
+    const status = document.getElementById("status");
+    const ws = new WebSocket("wss://voice-stream-server2.onrender.com");
 
-  ws.onerror = (e) => console.error("❌ WS error", e);
+    let mediaRecorder;
 
-  document.getElementById("startBtn").onclick = async () => {
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      recorder = new MediaRecorder(stream);
+    ws.onopen = () => {
+      console.log("✅ WebSocket connected");
+      status.innerText = "Status: Connected to Server";
 
-      recorder.ondataavailable = e => {
-        if (e.data.size > 0 && ws.readyState === 1) {
-          ws.send(e.data);
-          console.log("📤 Sending audio chunk", e.data);
+      document.getElementById("startBtn").onclick = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          console.log("🎙️ Microphone permission granted");
+          status.innerText = "Status: Mic access granted";
+
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.start(200); // record every 200ms
+
+          mediaRecorder.onstart = () => {
+            console.log("🎤 Recording started");
+            status.innerText = "Status: Recording started";
+          };
+
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+              ws.send(event.data);
+              console.log("📤 Sent audio chunk");
+            }
+          };
+        } catch (err) {
+          console.error("❌ Mic access denied or error:", err);
+          status.innerText = "❌ Error: Mic access denied or not supported";
         }
       };
+    };
 
-      recorder.start(200);
-      console.log("🎤 Recording started");
-    } catch (err) {
-      console.error("🎙️ Mic permission denied", err);
-    }
-  };
-</script>
+    ws.onerror = (err) => {
+      console.error("❌ WebSocket Error", err);
+      status.innerText = "❌ WebSocket connection failed";
+    };
+  </script>
+</body>
+</html>
