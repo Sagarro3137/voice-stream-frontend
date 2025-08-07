@@ -1,42 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Mic Broadcaster</title>
+  <title>Mic Broadcasting</title>
 </head>
 <body>
-  <h2>🎤 Live Mic Broadcaster</h2>
-  <p id="status">Connecting...</p>
+  <h1>🎙️ You are Broadcasting</h1>
+  <button id="start">Start Broadcast</button>
+  <button id="stop">Stop Broadcast</button>
 
   <script>
-    const status = document.getElementById("status");
+    let mediaRecorder;
     const socket = new WebSocket("wss://voice-stream-server2.onrender.com");
 
-    socket.addEventListener("open", () => {
-      status.innerText = "✅ Connected. Streaming audio...";
-      socket.send("broadcaster");
+    socket.onopen = () => console.log("✅ Connected to server");
 
-      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-        const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: "audio/webm",
-        });
+    document.getElementById("start").onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
 
-        mediaRecorder.addEventListener("dataavailable", (event) => {
-          if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
-            socket.send(event.data);
-          }
-        });
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0 && socket.readyState === WebSocket.OPEN) {
+          socket.send(e.data);
+        }
+      };
 
-        mediaRecorder.start(250); // send audio every 250ms
-      });
-    });
+      mediaRecorder.start(250); // send chunks every 250ms
+    };
 
-    socket.addEventListener("close", () => {
-      status.innerText = "❌ Disconnected.";
-    });
-
-    socket.addEventListener("error", () => {
-      status.innerText = "⚠️ Connection Error.";
-    });
+    document.getElementById("stop").onclick = () => {
+      mediaRecorder?.stop();
+    };
   </script>
 </body>
 </html>
