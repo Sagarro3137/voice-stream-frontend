@@ -1,30 +1,39 @@
 <!DOCTYPE html>
 <html>
-<head><title>Live Listener</title></head>
+<head>
+  <title>🔊 Voice Listener</title>
+</head>
 <body>
-  <h1>Listen Live</h1>
-  <p id="status">Connecting...</p>
+  <h2>🔊 Listening...</h2>
+  <p>Status: <span id="status">Connecting…</span></p>
+
   <script>
-    const ws = new WebSocket('wss://voice-stream-server2.onrender.com/signal');
-    const pc = new RTCPeerConnection();
-    pc.ontrack = e => {
-      const audio = new Audio();
-      audio.srcObject = e.streams[0];
-      audio.autoplay = true;
-      document.body.appendChild(audio);
-      document.getElementById('status').innerText = 'Live!';
+    const status = document.getElementById("status");
+    const socket = new WebSocket("wss://voice-stream-server2.onrender.com");
+    socket.binaryType = "arraybuffer";
+
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    socket.onopen = () => {
+      socket.send("listener");
+      status.innerText = "Connected ✅";
     };
-    pc.onicecandidate = e => e.candidate && ws.send(JSON.stringify({ type:'ice-candidate', candidate: e.candidate }));
-    ws.onopen = async () => {
-      ws.send(JSON.stringify({ type: 'listener' }));
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      ws.send(JSON.stringify({ type: 'offer', sdp: offer }));
+
+    socket.onmessage = (event) => {
+      audioContext.decodeAudioData(event.data.slice(0), (buffer) => {
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+      });
     };
-    ws.onmessage = async e => {
-      const msg = JSON.parse(e.data);
-      if (msg.type === 'answer') await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-      if (msg.type === 'ice-candidate') await pc.addIceCandidate(msg.candidate);
+
+    socket.onerror = () => {
+      status.innerText = "Connection error ❌";
+    };
+
+    socket.onclose = () => {
+      status.innerText = "Disconnected 🔌";
     };
   </script>
 </body>
