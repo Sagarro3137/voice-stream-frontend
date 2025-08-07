@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head><title>Live Listener</title></head>
+<body>
+  <h1>Listen Live</h1>
+  <p id="status">Connecting...</p>
+  <script>
+    const ws = new WebSocket('wss://voice-stream-server2.onrender.com/signal');
+    const pc = new RTCPeerConnection();
+    pc.ontrack = e => {
+      const audio = new Audio();
+      audio.srcObject = e.streams[0];
+      audio.autoplay = true;
+      document.body.appendChild(audio);
+      document.getElementById('status').innerText = 'Live!';
+    };
+    pc.onicecandidate = e => e.candidate && ws.send(JSON.stringify({ type:'ice-candidate', candidate: e.candidate }));
+    ws.onopen = async () => {
+      ws.send(JSON.stringify({ type: 'listener' }));
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      ws.send(JSON.stringify({ type: 'offer', sdp: offer }));
+    };
+    ws.onmessage = async e => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'answer') await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+      if (msg.type === 'ice-candidate') await pc.addIceCandidate(msg.candidate);
+    };
+  </script>
+</body>
+</html>
