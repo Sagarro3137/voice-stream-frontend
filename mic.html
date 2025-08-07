@@ -1,49 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
   <title>Mic Broadcaster</title>
 </head>
 <body>
-  <h2>🎙️ Broadcasting Voice...</h2>
-  <p id="status">Waiting...</p>
+  <h2>🎤 Live Mic Broadcaster</h2>
+  <p id="status">Connecting...</p>
 
   <script>
     const status = document.getElementById("status");
-
     const socket = new WebSocket("wss://voice-stream-server2.onrender.com");
 
     socket.addEventListener("open", () => {
-      status.innerText = "✅ Connected to server!";
+      status.innerText = "✅ Connected. Streaming audio...";
       socket.send("broadcaster");
 
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-          const mediaRecorder = new MediaRecorder(stream, {
-            mimeType: "audio/webm"
-          });
-
-          mediaRecorder.addEventListener("dataavailable", (event) => {
-            if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
-              socket.send(event.data);
-            }
-          });
-
-          mediaRecorder.start(250); // Send chunks every 250ms
-        })
-        .catch(err => {
-          status.innerText = "❌ Microphone access denied.";
-          console.error(err);
+      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: "audio/webm",
         });
+
+        mediaRecorder.addEventListener("dataavailable", (event) => {
+          if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
+            socket.send(event.data);
+          }
+        });
+
+        mediaRecorder.start(250); // send audio every 250ms
+      });
     });
 
     socket.addEventListener("close", () => {
-      status.innerText = "❌ Disconnected from server.";
+      status.innerText = "❌ Disconnected.";
     });
 
-    socket.addEventListener("error", (error) => {
-      status.innerText = "❗ WebSocket error.";
-      console.error("WebSocket error:", error);
+    socket.addEventListener("error", () => {
+      status.innerText = "⚠️ Connection Error.";
     });
   </script>
 </body>
