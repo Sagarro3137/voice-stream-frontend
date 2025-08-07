@@ -1,38 +1,29 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>🎙️ Voice Broadcaster</title>
-</head>
-<body>
-  <h2>🔴 Live Broadcast</h2>
-  <button id="startBtn">Start</button>
-  <button id="stopBtn">Stop</button>
+<script>
+  const ws = new WebSocket("wss://voice-stream-server2.onrender.com");
+  let recorder, stream;
 
-  <script>
-    const ws = new WebSocket("wss://voice-stream-server2.onrender.com");
-    let recorder, stream;
+  ws.onopen = () => {
+    console.log("✅ WebSocket connected");
+  };
 
-    ws.onopen = () => console.log("✅ Connected to WebSocket");
+  ws.onerror = (e) => console.error("❌ WS error", e);
 
-    document.getElementById("startBtn").onclick = async () => {
+  document.getElementById("startBtn").onclick = async () => {
+    try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       recorder = new MediaRecorder(stream);
 
       recorder.ondataavailable = e => {
         if (e.data.size > 0 && ws.readyState === 1) {
           ws.send(e.data);
+          console.log("📤 Sending audio chunk", e.data);
         }
       };
 
-      recorder.start(200); // 200ms chunks
+      recorder.start(200);
       console.log("🎤 Recording started");
-    };
-
-    document.getElementById("stopBtn").onclick = () => {
-      if (recorder) recorder.stop();
-      if (stream) stream.getTracks().forEach(track => track.stop());
-      console.log("🛑 Recording stopped");
-    };
-  </script>
-</body>
-</html>
+    } catch (err) {
+      console.error("🎙️ Mic permission denied", err);
+    }
+  };
+</script>
