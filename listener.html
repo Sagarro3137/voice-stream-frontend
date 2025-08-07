@@ -1,36 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Voice Stream Listener</title>
+  <title>Listener</title>
 </head>
 <body>
-  <h2>👂 Listening to Mic...</h2>
-  <p id="status">Connecting to stream...</p>
+  <h1>👂 Listening Live Audio</h1>
+  <p id="status">Connecting...</p>
 
   <script>
-    const status = document.getElementById("status");
     const socket = new WebSocket("wss://voice-stream-server2.onrender.com");
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    let firstChunk = null;
 
-    socket.addEventListener("open", () => {
-      status.innerText = "✅ Connected to stream";
-      socket.send("listener");
-    });
+    socket.onopen = () => {
+      document.getElementById("status").innerText = "🔊 Connected. Waiting for audio...";
+    };
 
-    socket.addEventListener("message", (event) => {
-      const audioData = event.data;
-      const blob = new Blob([audioData], { type: "audio/webm" });
-      const audio = new Audio();
-      audio.src = URL.createObjectURL(blob);
-      audio.play();
-    });
+    socket.onmessage = async (event) => {
+      const blob = event.data instanceof Blob ? event.data : new Blob([event.data]);
+      const arrayBuffer = await blob.arrayBuffer();
 
-    socket.addEventListener("close", () => {
-      status.innerText = "❌ Disconnected from stream";
-    });
-
-    socket.addEventListener("error", () => {
-      status.innerText = "⚠️ Stream error";
-    });
+      try {
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+        source.start();
+      } catch (err) {
+        console.error("⚠️ Audio decode error:", err);
+      }
+    };
   </script>
 </body>
 </html>
