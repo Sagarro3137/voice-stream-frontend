@@ -1,40 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🔊 Voice Listener</title>
+  <meta charset="UTF-8" />
+  <title>Voice Stream Listener</title>
 </head>
 <body>
-  <h2>🔊 Listening...</h2>
-  <p>Status: <span id="status">Connecting…</span></p>
+  <h2>🔊 Live Audio Listener</h2>
+  <p id="status">Connecting to server...</p>
 
   <script>
     const status = document.getElementById("status");
+
     const socket = new WebSocket("wss://voice-stream-server2.onrender.com");
-    socket.binaryType = "arraybuffer";
 
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-    socket.onopen = () => {
+    socket.addEventListener("open", () => {
+      status.innerText = "✅ Connected to voice stream!";
       socket.send("listener");
-      status.innerText = "Connected ✅";
-    };
+    });
 
-    socket.onmessage = (event) => {
-      audioContext.decodeAudioData(event.data.slice(0), (buffer) => {
-        const source = audioContext.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContext.destination);
-        source.start(0);
-      });
-    };
+    socket.addEventListener("message", (event) => {
+      const audioData = event.data;
 
-    socket.onerror = () => {
-      status.innerText = "Connection error ❌";
-    };
+      const blob = new Blob([audioData], { type: "audio/webm" });
 
-    socket.onclose = () => {
-      status.innerText = "Disconnected 🔌";
-    };
+      const audio = new Audio();
+      audio.src = URL.createObjectURL(blob);
+      audio.play();
+    });
+
+    socket.addEventListener("close", () => {
+      status.innerText = "❌ Disconnected from server.";
+    });
+
+    socket.addEventListener("error", (error) => {
+      status.innerText = "❗ Error connecting to server.";
+      console.error("WebSocket error:", error);
+    });
   </script>
 </body>
 </html>
